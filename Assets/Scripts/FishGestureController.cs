@@ -1,4 +1,4 @@
-﻿using Unity.Android.Gradle.Manifest;
+﻿using UnityEngine.Android;
 using UnityEngine;
 
 public class FishGestureController : MonoBehaviour
