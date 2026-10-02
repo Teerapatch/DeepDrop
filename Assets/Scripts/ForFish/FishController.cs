@@ -20,6 +20,14 @@ public class FishController : MonoBehaviour
     private Vector3 knockbackVelocity = Vector3.zero;
     public float knockbackDecay = 5f; // ความเร็วในการเบรกหลังถูกชนกระเด็น
 
+    [Header("Passive Skills")]
+    public float knockbackResistance = 0f; // 0 = กระเด็นเต็มๆ, 1 = ไม่กระเด็นเลย
+    public bool hasSlimeShield = false;
+    public bool isShieldActive = false;
+
+    [Header("Audio")]
+    public AudioClip eatSound; // ลากไฟล์เสียงงับอาหารมาใส่ช่องนี้
+
     void Start()
     {
         currentHunger = maxHunger;
@@ -44,18 +52,22 @@ public class FishController : MonoBehaviour
     {
         currentHunger -= hungerDrainRate * Time.deltaTime;
         currentHunger = Mathf.Clamp(currentHunger, 0, maxHunger);
+        UpdateHungerUI();
 
-        UpdateHungerUI(); // อัปเดตหลอดภาพทุกเฟรม
-
+        // ถ้าหิวตาย ให้เรียก GameManager จบเกมพร้อมส่งค่า false (แพ้)
         if (currentHunger <= 0)
         {
-            Debug.Log("ปลาหิวตายแล้ว! Game Over");
-            // ลอจิก Game Over
+            GameManager.Instance.EndGame(false);
         }
     }
 
     public void EatFood(float nutrition)
     {
+        if (eatSound != null)
+        {
+            AudioManager.Instance.PlaySFX(eatSound);
+        }
+
         currentHunger += nutrition;
         currentHunger = Mathf.Clamp(currentHunger, 0, maxHunger);
         UpdateHungerUI();
@@ -67,16 +79,28 @@ public class FishController : MonoBehaviour
     }
     public void TakeDamage(float damage, Vector3 knockbackDir, float force)
     {
-        // 1. ลดความหิว
+        // เช็คว่ามีโล่แบคทีเรียหรือไม่
+        if (hasSlimeShield && isShieldActive)
+        {
+            isShieldActive = false;
+            Debug.Log("🛡️ โล่เมือกป้องกันดาเมจไว้ได้!");
+            Invoke("RechargeShield", 5f); // สั่งชาร์จโล่ใหม่ใน 5 วินาที
+            return; // จบการทำงาน หินแตกไปฟรีๆ โดยไม่เสียเลือด
+        }
+
         currentHunger -= damage;
         currentHunger = Mathf.Clamp(currentHunger, 0, maxHunger);
         UpdateHungerUI();
 
-        // 2. ออกแรงกระเด็นไปตามทิศทางที่โดนชน
-        knockbackVelocity = knockbackDir.normalized * force;
-
-        Debug.Log("โอ๊ย! โดนหินชน พลังงานลดเหลือ: " + currentHunger);
+        // คำนวณแรงกระเด็นหักลบกับค่าต้านทาน (ถ้าเป็นหอย = 1 จะคูณ 0 ทำให้ไม่กระเด็น)
+        knockbackVelocity = knockbackDir.normalized * (force * (1f - knockbackResistance));
     }
+    void RechargeShield()
+    {
+        isShieldActive = true;
+        Debug.Log("🟢 โล่เมือกชาร์จเต็ม พร้อมใช้งาน!");
+    }
+
     void UpdateScoreUI()
     {
         if (scoreText != null)
@@ -86,7 +110,7 @@ public class FishController : MonoBehaviour
     }
 
     // ฟังก์ชันใหม่สำหรับคำนวณและแสดงผลหลอดความหิว
-    void UpdateHungerUI()
+    public void UpdateHungerUI()
     {
         if (hungerFillImage != null)
         {

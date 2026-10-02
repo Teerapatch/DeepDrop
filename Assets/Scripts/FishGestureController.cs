@@ -15,6 +15,7 @@ public class FishGestureController : MonoBehaviour
     [Header("Movement Settings")]
     public float baseMoveSpeed = 5f;
     public float rotationSpeed = 5f;
+    public float decelerationRate = 3f;
     private float speedModifier;
     private float rotateModifer;
 
@@ -32,9 +33,19 @@ public class FishGestureController : MonoBehaviour
     [Header("Timeout")]
     public float trackingTimeout = 1.0f; // Force tracking lost if Python crashes
 
+    [Header("Swimming Audio")]
+    public AudioSource swimLoopSource; // ลาก AudioSource ของตัวปลามาใส่
+    public AudioClip fastSwimClip; // เสียงจ้วงน้ำ/พุ่งตัว
+
+    public float moveSoundThreshold = 1f; // ความเร็วขั้นต่ำที่เสียง Loop จะทำงาน
+    public float fastSwimThreshold = 8f; // ความเร็วขั้นต่ำที่จะถือว่า "กำลังเร่งความเร็ว" (ปรับให้เข้ากับ Base Speed ของคุณ)
+
+    private bool wasFastSwimming = false;
+
     private float currentSpeed = 0f;
     private Vector3 targetScale;
     private Vector3 initialBaseScale;
+
 
     void Start()
     {
@@ -130,8 +141,48 @@ public class FishGestureController : MonoBehaviour
         else
         {
             // Decelerate smoothly when tracking is lost or invalid gesture
-            currentSpeed = Mathf.Lerp(currentSpeed, 0f, Time.deltaTime * 3f);
+            currentSpeed = Mathf.Lerp(currentSpeed, 0f, Time.deltaTime * decelerationRate);
         }
+
+        // ==========================================
+        // 1. ระบบเสียงว่ายน้ำปกติ (Loop)
+        // ==========================================
+        if (swimLoopSource != null)
+        {
+            if (currentSpeed > moveSoundThreshold)
+            {
+                if (!swimLoopSource.isPlaying)
+                {
+                    swimLoopSource.Play();
+                }
+                // (ลูกเล่นเสริม) ปรับ Pitch ให้เสียงน้ำตีเร็วขึ้นตามความเร็วของปลา
+                swimLoopSource.pitch = Mathf.Lerp(0.8f, 1.3f, currentSpeed / fastSwimThreshold);
+            }
+            else
+            {
+                if (swimLoopSource.isPlaying)
+                {
+                    swimLoopSource.Pause(); // ใช้ Pause แทน Stop เพื่อให้เสียงเนียนขึ้นตอนขยับใหม่
+                }
+            }
+        }
+
+        // ==========================================
+        // 2. ระบบเสียงเร่งความเร็ว (One-Shot)
+        // ==========================================
+        bool isFastSwimming = data.handDistance > 0.6;
+
+        // เช็คว่าเพิ่งเข้าสู่โหมดความเร็วสูง "เป็นครั้งแรก" (ไม่ให้เสียงดังรัวๆ)
+        if (isFastSwimming && !wasFastSwimming)
+        {
+            if (fastSwimClip != null && AudioManager.Instance != null)
+            {
+                AudioManager.Instance.PlaySFX(fastSwimClip);
+            }
+        }
+
+        // บันทึกสถานะไว้เช็คในเฟรมถัดไป
+        wasFastSwimming = isFastSwimming;
 
         // Move forward locally
         //transform.Translate(Vector3.right * currentSpeed * Time.deltaTime, Space.Self);

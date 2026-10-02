@@ -133,3 +133,4 @@ MonoBehaviour:
   hitParticlePrefab: {fileID: 8554072000722138673, guid: dbad47e5055dc274ab9f2bcade3b3977, type: 3}
   minShadowScale: {x: 0, y: 0, z: 0}
   maxShadowScale: {x: 2.5, y: 2.5, z: 2.5}
+  rockHitSound: {fileID: 0}

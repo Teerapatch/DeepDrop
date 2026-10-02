@@ -16,6 +16,9 @@ public class RockObstacle : MonoBehaviour
     public Vector3 minShadowScale = new Vector3(0.5f, 0.5f, 0.5f);
     public Vector3 maxShadowScale = new Vector3(3f, 3f, 3f);
 
+    [Header("Audio")]
+    public AudioClip rockHitSound; // ลากไฟล์เสียงหินแตกมาใส่
+
     private GameObject currentShadow;
     private float totalDistance;
     private Vector3 fallDirection;
@@ -77,6 +80,11 @@ public class RockObstacle : MonoBehaviour
 
     void ShatterRock()
     {
+        if (rockHitSound != null)
+        {
+            AudioManager.Instance.PlaySFX(rockHitSound);
+        }
+
         if (hitParticlePrefab != null)
         {
             // สร้างฝุ่นตรงจุดตก (ระนาบปลา)
